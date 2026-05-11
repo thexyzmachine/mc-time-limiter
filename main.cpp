@@ -12,11 +12,8 @@ int loadUsedDay() {
     std::ifstream file(FILE_NAME);
     int day;
 
-    if (file >> day) {
-        return day;
-    }
-
-    return -1; 
+    if (file >> day) return day;
+    return -1;
 }
 
 void saveUsedDay(int day) {
@@ -46,23 +43,25 @@ bool isMinecraftOpen() {
     return found;
 }
 
-void closeMc() {
-    EnumWindows([](HWND hwnd, LPARAM) -> BOOL {
+void warnAndCloseMinecraft() {
 
-        wchar_t title[256];
-        GetWindowTextW(hwnd, title, 256);
+    HWND hwnd = FindWindowW(NULL, L"Minecraft");
 
-        std::wstring windowTitle = title;
+    if (!hwnd) return;
 
-        if (windowTitle.find(L"Minecraft") != std::wstring::npos) {
-            PostMessage(hwnd, WM_CLOSE, 0, 0);
-            std::cout << "Minecraft closed.\n";
-            return FALSE;
-        }
+    MessageBoxW(
+        NULL,
+        L"Please close Minecraft to save your progress.\n\n"
+        L"It will close in 5 seconds if you do not exit it.",
+        L"Minecraft Time Limit",
+        MB_OK | MB_ICONWARNING
+    );
 
-        return TRUE;
+    std::this_thread::sleep_for(std::chrono::seconds(5));
 
-    }, 0);
+    PostMessage(hwnd, WM_CLOSE, 0, 0);
+
+    std::cout << "Minecraft closed safely.\n";
 }
 
 int main() {
@@ -70,7 +69,7 @@ int main() {
     int usedDay = loadUsedDay();
     bool timerStarted = false;
 
-    std::cout << "Loaded usedDay = " << usedDay << "\n";
+    std::cout << "Loaded usedDay: " << usedDay << "\n";
 
     while (true) {
 
@@ -87,8 +86,8 @@ int main() {
         if (isMinecraftOpen()) {
 
             if (usedDay == currentDay) {
-                std::cout << "Limit already used today.\n";
-                closeMc();
+                std::cout << "Daily limit reached.\n";
+                warnAndCloseMinecraft();
                 continue;
             }
 
@@ -102,12 +101,12 @@ int main() {
 
                 if (isMinecraftOpen()) {
 
-                    closeMc();
+                    warnAndCloseMinecraft();
 
                     usedDay = currentDay;
                     saveUsedDay(usedDay);
 
-                    std::cout << "Saved usedDay = " << usedDay << "\n";
+                    std::cout << "Saved usedDay: " << usedDay << "\n";
                 }
             }
         }
